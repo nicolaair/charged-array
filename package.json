@@ -1,0 +1,28 @@
+{
+  "name": "charged-array",
+  "description": "Full-featured and supercharged JavaScript arrays with quick access by associated key",
+  "keywords": [
+    "array",
+    "associate-array",
+    "data-structure"
+  ],
+  "main": "index.js",
+  "version": "0.0.0",
+  "author": "nicolaair",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicolaair/charged-array"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "bun": "^1.0.26",
+    "bun-types": "latest",
+    "standard": "^17.1.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
