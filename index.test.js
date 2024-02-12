@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
 import { ChargedArray } from '.'
-import { deepEquals } from 'bun'
 
 const SECONDARY_KEY = 'slug'
 const MOCK = [
@@ -23,7 +22,10 @@ const commonCreator = (lengthLimit = MOCK.length) => {
 }
 
 const chargedCreator = (lengthLimit = MOCK.length) => {
-  return new ChargedArray(SECONDARY_KEY, false)(...commonCreator(lengthLimit))
+  return new ChargedArray({
+    secondaryKey: SECONDARY_KEY,
+    items: commonCreator(lengthLimit)
+  })
 }
 
 describe('instance', () => {
@@ -37,6 +39,7 @@ describe('instance', () => {
 
   test('has item passed from constructor', () => {
     const array = chargedCreator()
+    console.log('###', array.secondaryKey, array)
 
     return expect(array.at(0)[array.secondaryKey]).toBe('first')
   })
@@ -71,7 +74,7 @@ describe('push', () => {
 
     array.push(item)
 
-    return expect(deepEquals(array.at(0), item)).toBeTrue()
+    return expect(array.at(0)).toStrictEqual(item)
   })
 
   test('multiple items', () => {
@@ -80,7 +83,7 @@ describe('push', () => {
 
     array.push(...items)
 
-    return expect(deepEquals(array, items)).toBeTrue()
+    return expect(array).toStrictEqual(items)
   })
 
   test('returned new length', () => {
@@ -98,31 +101,21 @@ describe('splice', () => {
 
     array.splice()
 
-    return expect(deepEquals(array, commonCreator())).toBeTrue()
+    return expect(array).toStrictEqual(commonCreator())
   })
 
   test('from start to end', () => {
-    return expect(
-      deepEquals(
-        chargedCreator().splice(1),
-        commonCreator().splice(1)
-      )
-    ).toBe(true)
+    return expect(chargedCreator().splice(1)).toStrictEqual(commonCreator().splice(1))
   })
 
   test('from start to count limit', () => {
-    return expect(
-      deepEquals(
-        chargedCreator().splice(2, 4),
-        commonCreator().splice(2, 4)
-      )
-    ).toBeTrue()
+    return expect(chargedCreator().splice(2, 4)).toStrictEqual(commonCreator().splice(2, 4))
   })
 
   test('with items', () => {
     const array = chargedCreator()
 
-    return expect(array.splice(0, 1, ...chargedCreator(3)).pop()[array.secondaryKey]).toBe('third')
+    return expect(array.splice(0, 1, ...chargedCreator(3)).at(-1)[array.secondaryKey]).toBe('third')
   })
 })
 
@@ -142,12 +135,7 @@ describe('map', () => {
 
   test('index and inner array are abble', () => {
     chargedCreator().map((item, index, array) => {
-      expect(
-        deepEquals(
-          item,
-          array[index]
-        )
-      ).toBeTrue()
+      expect(item).toStrictEqual(array[index])
 
       return item
     }, {})

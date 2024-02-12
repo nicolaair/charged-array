@@ -1,94 +1,57 @@
 export class ChargedArray extends Array {
   #secondaryKey
-  #relations
+  #relations = {}
 
-  constructor (secondaryKey = 'id', instantly = true) {
-    if (instantly) {
-      super()
-      this.#secondaryKey = secondaryKey
-      this.#relations = {}
-    } else {
-      return (...params) => {
-        super()
-        this.#secondaryKey = secondaryKey
-        this.#relations = {}
+  constructor (config) {
+    super()
+    this.#secondaryKey = config.secondaryKey ?? 'id'
 
-        params.forEach(item => {
-          this.push(item)
-        })
+    if (!config.items) {
+      return (...items) => {
+        this.push(...items)
 
         return this
       }
+    } else if (config.items.length > 0) {
+      this.push(...config.items)
     }
   }
 
-  #push = Array.prototype.push.bind(this)
   push (...items) {
-    items.forEach(item => {
-      const index = this.#push(item) - 1
+    for (let i = 0; i < items.length; ++i) {
+      const item = items[i]
+      const lastIndex = super.push(item) - 1
 
-      if (!Object.hasOwn(item, this.#secondaryKey)) {
-        return
+      if (item[this.#secondaryKey]) {
+        (this.#relations[item[this.#secondaryKey]] ??= []).push(lastIndex)
       }
-
-      if (Object.hasOwn(this.#relations, item[this.#secondaryKey])) {
-        this.#relations[item[this.#secondaryKey]].push(index)
-      } else {
-        this.#relations[item[this.#secondaryKey]] = [index]
-      }
-    })
+    }
 
     return this.length
   }
 
-  #splice = Array.prototype.splice.bind(this)
   splice (start, deleteCount = this.length - start, ...items) {
+    const newArray = new ChargedArray({ secondaryKey: this.#secondaryKey })()
+
     if (typeof start === 'undefined') {
-      return new ChargedArray(this.#secondaryKey)
+      return newArray
     }
 
-    const end = start + deleteCount
-    const array = new ChargedArray(this.#secondaryKey)
+    const clonedState = [...this]
 
-    for (let i = 0; i < this.length; ++i) {
-      const item = this[i]
+    newArray.push(...clonedState.splice(start, deleteCount))
+    newArray.push(...items)
 
-      if (i >= start && i < end) {
-        array.push(item)
+    this.length = 0
+    this.#relations = {}
+    this.push(...clonedState)
 
-        if (Object.hasOwn(item.hasOwnProperty, this.#secondaryKey) && Object.hasOwn(this.#relations, item[this.#secondaryKey])) {
-          this.#relations[item[this.#secondaryKey]].forEach((key, index) => {
-            if (i === key) {
-              this.#relations[item[this.#secondaryKey]].splice(index, 1)
-            }
-          })
-
-          if (!this.#relations[item[this.#secondaryKey]].length) {
-            delete this.#relations[item[this.#secondaryKey]]
-          }
-        }
-      } else if (
-        i >= end &&
-        Object.hasOwn(item, this.#secondaryKey) &&
-        Object.hasOwn(this.#relations, item[this.#secondaryKey])
-      ) {
-        this.#relations[item[this.#secondaryKey]].forEach((key, index) => {
-          if (i === key) {
-            this.#relations[item[this.#secondaryKey]][index] = this.#relations[item[this.#secondaryKey]][index] - deleteCount
-          }
-        })
-      }
-    }
-
-    array.push(...items)
-    this.#splice(start, deleteCount)
-
-    return array
+    return newArray
   }
 
   // TODO second argument
   map (callback) {
-    const array = new ChargedArray(this.#secondaryKey, false)(this.length)
+    const array = new ChargedArray({ secondaryKey: this.#secondaryKey })(this.length)
 
     for (let i = 0; i < this.length; ++i) {
       array[i] = callback(this[i], i, this)
@@ -98,7 +61,7 @@ export class ChargedArray extends Array {
   }
 
   filter (callback) {
-    const array = new ChargedArray(this.#secondaryKey)
+    const array = new ChargedArray({ secondaryKey: this.#secondaryKey })()
 
     for (let i = 0; i < this.length; ++i) {
       const item = this[i]
@@ -113,7 +76,7 @@ export class ChargedArray extends Array {
 
   get (...keys) {
     if (keys.length > 1 || Array.isArray(keys[0])) {
-      const array = new ChargedArray(this.#secondaryKey)
+      const array = new ChargedArray({ secondaryKey: this.#secondaryKey })()
 
       keys.flat().forEach(key => {
         array.push(this[this.#relations[key]])
