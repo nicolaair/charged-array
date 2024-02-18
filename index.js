@@ -1,10 +1,12 @@
+import { isPrimitive } from './utils/is_primitive'
+
 export class ChargedArray extends Array {
-  #secondaryKey
-  #relations = {}
+  #secondaryIndex
+  #indexRelations = {}
 
   constructor (config) {
     super()
-    this.#secondaryKey = config.secondaryKey ?? 'id'
+    this.#secondaryIndex = config.secondaryIndex ?? 'id'
 
     if (!config.items) {
       return (...items) => {
@@ -21,14 +23,14 @@ export class ChargedArray extends Array {
     for (let i = 0; i < items.length; ++i) {
       const item = items[i]
 
-      this.add(item, item?.[this.#secondaryKey])
+      this.add(item, item?.[this.#secondaryIndex])
     }
 
     return this.length
   }
 
   splice (start, deleteCount = this.length - start, ...items) {
-    const newArray = new ChargedArray({ secondaryKey: this.#secondaryKey })()
+    const newArray = new ChargedArray({ secondaryIndex: this.#secondaryIndex })()
 
     if (typeof start === 'undefined') {
       return newArray
@@ -40,7 +42,7 @@ export class ChargedArray extends Array {
     newArray.push(...items)
 
     this.length = 0
-    this.#relations = {}
+    this.#indexRelations = {}
     this.push(...clonedState)
 
     return newArray
@@ -48,7 +50,7 @@ export class ChargedArray extends Array {
 
   // TODO second argument
   map (callback) {
-    const array = new ChargedArray({ secondaryKey: this.#secondaryKey })(this.length)
+    const array = new ChargedArray({ secondaryIndex: this.#secondaryIndex })(this.length)
 
     for (let i = 0; i < this.length; ++i) {
       array[i] = callback(this[i], i, this)
@@ -58,7 +60,7 @@ export class ChargedArray extends Array {
   }
 
   filter (callback) {
-    const array = new ChargedArray({ secondaryKey: this.#secondaryKey })()
+    const array = new ChargedArray({ secondaryIndex: this.#secondaryIndex })()
 
     for (let i = 0; i < this.length; ++i) {
       const item = this[i]
@@ -72,18 +74,18 @@ export class ChargedArray extends Array {
   }
 
   has (key) {
-    return !!this.#relations[key]?.length
+    return !!this.#indexRelations[key]?.length
   }
 
   get (key) {
-    return this[this.#relations[key]]
+    return this[this.#indexRelations[key]]
   }
 
   getAll (...keys) {
-    const array = new ChargedArray({ secondaryKey: this.#secondaryKey })()
+    const array = new ChargedArray({ secondaryIndex: this.#secondaryIndex })()
 
     keys.flat().forEach(key => {
-      const indexes = this.#relations[key]
+      const indexes = this.#indexRelations[key]
       if (indexes) {
         indexes.forEach(index => {
           array.add(this[index], key)
@@ -96,24 +98,24 @@ export class ChargedArray extends Array {
 
   add (item, key) {
     const lastIndex = super.push(item) - 1
-    const relationKey = key ?? item?.[this.#secondaryKey]
+    const relationKey = key ?? (isPrimitive(item) ? item : item?.[this.#secondaryIndex])
 
     if (relationKey) {
-      (this.#relations[relationKey] ??= []).push(lastIndex)
+      (this.#indexRelations[relationKey] ??= []).push(lastIndex)
     }
 
     return this
   }
 
   set (key, item) {
-    const indexes = this.#relations[key]
+    const indexes = this.#indexRelations[key]
 
     if (indexes) {
       indexes.forEach(index => {
         this.splice(index, 1)
       })
 
-      delete this.#relations[key]
+      delete this.#indexRelations[key]
     }
 
     this.add(item, key)
@@ -122,20 +124,20 @@ export class ChargedArray extends Array {
   }
 
   delete (...keys) {
-    const indexes = keys.flat().map(key => this.#relations[key])
+    const indexes = keys.flat().map(key => this.#indexRelations[key])
 
     indexes.forEach(index => {
       const item = this.splice(index, 1)
 
-      if (Object.hasOwn(item, this.#secondaryKey) && Object.hasOwn(this.#relations, item[this.#secondaryKey])) {
-        this.#relations[item[this.#secondaryKey]].forEach(key => {
+      if (Object.hasOwn(item, this.#secondaryIndex) && Object.hasOwn(this.#indexRelations, item[this.#secondaryIndex])) {
+        this.#indexRelations[item[this.#secondaryIndex]].forEach(key => {
           if (index === key) {
-            this.#relations[item[this.#secondaryKey]].splice(index, 1)
+            this.#indexRelations[item[this.#secondaryIndex]].splice(index, 1)
           }
         })
 
-        if (!this.#relations[item[this.#secondaryKey]].length) {
-          delete this.#relations[item[this.#secondaryKey]]
+        if (!this.#indexRelations[item[this.#secondaryIndex]].length) {
+          delete this.#indexRelations[item[this.#secondaryIndex]]
         }
       }
     })
@@ -143,11 +145,11 @@ export class ChargedArray extends Array {
     return this
   }
 
-  get secondaryKey () {
-    return this.#secondaryKey
+  get secondaryIndex () {
+    return this.#secondaryIndex
   }
 
-  get relations () {
-    return this.#relations
+  get indexRelations () {
+    return this.#indexRelations
   }
 }

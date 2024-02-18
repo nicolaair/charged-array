@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { ChargedArray } from '.'
+import { isPrimitive } from './utils/is_primitive'
 
-const SECONDARY_KEY = 'slug'
+const SECONDARY_INDEX = 'slug'
 const MOCK = [
   { slug: 'first', name: 'first 1' },
   { slug: 'second' },
@@ -23,7 +24,7 @@ const commonCreator = (lengthLimit = MOCK.length) => {
 
 const chargedCreator = (lengthLimit = MOCK.length) => {
   return new ChargedArray({
-    secondaryKey: SECONDARY_KEY,
+    secondaryIndex: SECONDARY_INDEX,
     items: commonCreator(lengthLimit)
   })
 }
@@ -40,29 +41,26 @@ describe('instance', () => {
   test('has item passed from constructor', () => {
     const array = chargedCreator()
 
-    return expect(array.at(0)[array.secondaryKey]).toBe('first')
+    return expect(array.at(0)[array.secondaryIndex]).toBe('first')
   })
 
-  test('has secondaryKey', () => {
-    expect(chargedCreator().secondaryKey).toBe(SECONDARY_KEY)
+  test('has secondary index', () => {
+    expect(chargedCreator().secondaryIndex).toBe(SECONDARY_INDEX)
   })
 
-  test('has relations', () => {
-    const { secondaryKey, relations } = chargedCreator()
+  test('has index relations', () => {
+    const { secondaryIndex, indexRelations } = chargedCreator()
 
-    expect(relations).toStrictEqual(
-      commonCreator().reduce(function (accumulator, item, index) {
-        if (Object.hasOwn(item, secondaryKey)) {
-          if (Object.hasOwn(accumulator, item[secondaryKey])) {
-            accumulator[item[secondaryKey]].push(index)
-          } else {
-            accumulator[item[secondaryKey]] = [index]
-          }
-        }
+    const expected = commonCreator().reduce(function (accumulator, item, index) {
+      const relationKey = isPrimitive(item) ? item : item?.[secondaryIndex]
+      if (relationKey) {
+        (accumulator[relationKey] ??= []).push(index)
+      }
 
-        return accumulator
-      }, {})
-    )
+      return accumulator
+    }, {})
+
+    expect(indexRelations).toStrictEqual(expected)
   })
 })
 
@@ -114,7 +112,7 @@ describe('splice', () => {
   test('with items', () => {
     const array = chargedCreator()
 
-    return expect(array.splice(0, 1, ...chargedCreator(3)).at(-1)[array.secondaryKey]).toBe('third')
+    return expect(array.splice(0, 1, ...chargedCreator(3)).at(-1)[array.secondaryIndex]).toBe('third')
   })
 })
 
@@ -122,14 +120,14 @@ describe('map', () => {
   test('change one field from items', () => {
     const array = chargedCreator()
     const newArray = array.map((item) => {
-      if (typeof array !== 'object' || !array[array.secondaryKey]) {
+      if (typeof array !== 'object' || !array[array.secondaryIndex]) {
         return item
       }
 
-      return { ...item, name: array[array.secondaryKey] }
+      return { ...item, name: array[array.secondaryIndex] }
     })
 
-    expect(newArray.some((item, index) => item.name === array[index][array.secondaryKey])).toBeTrue()
+    expect(newArray.some((item, index) => item.name === array[index][array.secondaryIndex])).toBeTrue()
   })
 
   test('index and inner array are abble', () => {
@@ -174,7 +172,7 @@ describe('get all', () => {
     const array = chargedCreator()
     const key = 'first'
 
-    expect(array.getAll(key)).toStrictEqual(array.filter(item => item[array.secondaryKey] === key))
+    expect(array.getAll(key)).toStrictEqual(array.filter(item => item[array.secondaryIndex] === key))
   })
 
   test('by unknown key', () => {
@@ -188,7 +186,7 @@ describe('get all', () => {
 describe('add', () => {
   test('by default key', () => {
     const array = chargedCreator()
-    const key = array.secondaryKey
+    const key = array.secondaryIndex
     const value = { [key]: 'bar' }
 
     array.add(value)
@@ -210,7 +208,7 @@ describe('add', () => {
 describe('set', () => {
   test('by default key', () => {
     const array = chargedCreator()
-    const key = array.secondaryKey
+    const key = array.secondaryIndex
     const value = { [key]: 'bar' }
 
     array.set(null, value)
