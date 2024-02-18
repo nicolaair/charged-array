@@ -17,6 +17,10 @@
     "allowJs": true,
     "types": [
       "bun-types"
-    ]
+    ],
+    "paths": {
+      "charged-array": ["./src/index.js"],
+      "charged-array/*": ["./src/*"]
+    }
   }
 }
