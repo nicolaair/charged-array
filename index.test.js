@@ -3,15 +3,15 @@ import { ChargedArray } from '.'
 
 const SECONDARY_KEY = 'slug'
 const MOCK = [
-  { slug: 'first' },
+  { slug: 'first', name: 'first 1' },
   { slug: 'second' },
   { slug: 'third' },
   { id: 'fourth' },
   { slug: 'fifth' },
   'sixth',
   { slug: 'seventh' },
-  { slug: 'first' },
-  { slug: 'first' },
+  { slug: 'first', name: 'first 2' },
+  { slug: 'first', name: 'first 3' },
   10
 ]
 
@@ -39,7 +39,6 @@ describe('instance', () => {
 
   test('has item passed from constructor', () => {
     const array = chargedCreator()
-    console.log('###', array.secondaryKey, array)
 
     return expect(array.at(0)[array.secondaryKey]).toBe('first')
   })
@@ -142,10 +141,101 @@ describe('map', () => {
   })
 })
 
-describe('get', () => {
-  test('by key', () => {
+describe('has', () => {
+  test('by known key', () => {
     const array = chargedCreator()
 
-    expect(array.get('fifth')).toStrictEqual(array[4])
+    expect(array.has('fifth')).toBeTrue()
+  })
+
+  test('by unknown key', () => {
+    const array = chargedCreator()
+
+    expect(array.has('eleven')).toBeFalse()
+  })
+})
+
+describe('get', () => {
+  test('by known key', () => {
+    const array = chargedCreator()
+
+    expect(array.get('fifth')).toStrictEqual(array.at(4))
+  })
+
+  test('by unknown key', () => {
+    const array = chargedCreator()
+
+    expect(array.get('eleven')).toBeUndefined()
+  })
+})
+
+describe('get all', () => {
+  test('by known key', () => {
+    const array = chargedCreator()
+    const key = 'first'
+
+    expect(array.getAll(key)).toStrictEqual(array.filter(item => item[array.secondaryKey] === key))
+  })
+
+  test('by unknown key', () => {
+    const array = chargedCreator()
+    const key = 'eleven'
+
+    expect(array.getAll(key)).toBeEmpty()
+  })
+})
+
+describe('add', () => {
+  test('by default key', () => {
+    const array = chargedCreator()
+    const key = array.secondaryKey
+    const value = { [key]: 'bar' }
+
+    array.add(value)
+
+    expect(array.get(value[key])).toStrictEqual(value)
+  })
+
+  test('by custom key', () => {
+    const array = chargedCreator()
+    const key = 'foo'
+    const value = 'bar'
+
+    array.add(value, key)
+
+    expect(array.get(key)).toBe(value)
+  })
+})
+
+describe('set', () => {
+  test('by default key', () => {
+    const array = chargedCreator()
+    const key = array.secondaryKey
+    const value = { [key]: 'bar' }
+
+    array.set(null, value)
+
+    expect(array.get(value[key])).toBe(value)
+  })
+
+  test('by custom key', () => {
+    const array = chargedCreator()
+    const key = 'foo'
+    const value = 'bar'
+
+    array.set(key, value)
+
+    expect(array.get(key)).toBe(value)
+  })
+
+  test('by custom key over multiple', () => {
+    const array = chargedCreator()
+    const key = 'first'
+    const value = `new value for ${key} key`
+    const initialValuesByKey = structuredClone(array.getAll(key))
+    const updatedValuesByKey = array.set(key, value).getAll(key)
+
+    expect(updatedValuesByKey).not.toStrictEqual(initialValuesByKey)
+    expect(updatedValuesByKey).toStrictEqual([value])
   })
 })

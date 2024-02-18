@@ -20,11 +20,8 @@ export class ChargedArray extends Array {
   push (...items) {
     for (let i = 0; i < items.length; ++i) {
       const item = items[i]
-      const lastIndex = super.push(item) - 1
 
-      if (item[this.#secondaryKey]) {
-        (this.#relations[item[this.#secondaryKey]] ??= []).push(lastIndex)
-      }
+      this.add(item, item?.[this.#secondaryKey])
     }
 
     return this.length
@@ -74,25 +71,58 @@ export class ChargedArray extends Array {
     return array
   }
 
-  get (...keys) {
-    if (keys.length > 1 || Array.isArray(keys[0])) {
-      const array = new ChargedArray({ secondaryKey: this.#secondaryKey })()
+  has (key) {
+    return !!this.#relations[key]?.length
+  }
 
-      keys.flat().forEach(key => {
-        array.push(this[this.#relations[key]])
+  get (key) {
+    return this[this.#relations[key]]
+  }
+
+  getAll (...keys) {
+    const array = new ChargedArray({ secondaryKey: this.#secondaryKey })()
+
+    keys.flat().forEach(key => {
+      const indexes = this.#relations[key]
+      if (indexes) {
+        indexes.forEach(index => {
+          array.add(this[index], key)
+        })
+      }
+    })
+
+    return array
+  }
+
+  add (item, key) {
+    const lastIndex = super.push(item) - 1
+    const relationKey = key ?? item?.[this.#secondaryKey]
+
+    if (relationKey) {
+      (this.#relations[relationKey] ??= []).push(lastIndex)
+    }
+
+    return this
+  }
+
+  set (key, item) {
+    const indexes = this.#relations[key]
+
+    if (indexes) {
+      indexes.forEach(index => {
+        this.splice(index, 1)
       })
 
-      return array
-    } else {
-      return this[this.#relations[keys[0]]]
+      delete this.#relations[key]
     }
+
+    this.add(item, key)
+
+    return this
   }
 
   delete (...keys) {
-    const indexes = keys
-      .flat()
-      .map(key => this.#relations[key])
-      .flat()
+    const indexes = keys.flat().map(key => this.#relations[key])
 
     indexes.forEach(index => {
       const item = this.splice(index, 1)
